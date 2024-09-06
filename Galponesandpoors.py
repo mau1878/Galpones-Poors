@@ -39,19 +39,19 @@ def get_weighted_average_and_components(date):
             total += close_price * weight
             components[ticker] = close_price
         else:
-            st.write(f"No data available for {ticker} on {date}")
+            st.write(f"No hay datos disponibles para {ticker} en {date}")
     return total, components
 
 # Streamlit app
-st.title("Normalized Weighted Average Close Prices and Component Variations")
+st.title("Galpones & Poor's - Data histórica")
 
 # Date selection
-selected_date = st.date_input("Select a date", value=datetime.today())
+selected_date = st.date_input("Selecciona una fecha", value=datetime.today())
 previous_date = selected_date - timedelta(days=1)
 
 # Button to fetch data
-if st.button('Enter'):
-    st.write(f"Fetching data for {selected_date} and {previous_date}...")
+if st.button('Ingresar'):
+    st.write(f"Obteniendo datos para {selected_date} y {previous_date}...")
 
     # Fetch the weighted average for 5 September 2024
     weighted_avg_5sep2024, _ = get_weighted_average_and_components(target_date)
@@ -59,7 +59,7 @@ if st.button('Enter'):
     if weighted_avg_5sep2024:
         # Calculate normalization factor for 5 September 2024
         normalization_factor = target_value_5sep2024 / weighted_avg_5sep2024
-        st.write(f"Normalization factor based on 5 September 2024: {normalization_factor:.4f}")
+        st.write(f"Factor de normalización basado en el 5 de septiembre de 2024: {normalization_factor:.4f}")
         
         # Fetch the weighted averages and components for the selected and previous dates
         weighted_avg_selected, components_selected = get_weighted_average_and_components(selected_date)
@@ -70,12 +70,12 @@ if st.button('Enter'):
             normalized_selected = weighted_avg_selected * normalization_factor
             normalized_previous = weighted_avg_previous * normalization_factor
             
-            st.write(f"Normalized weighted average on {selected_date}: {normalized_selected:.2f}")
-            st.write(f"Normalized weighted average on {previous_date}: {normalized_previous:.2f}")
+            st.write(f"Promedio ponderado normalizado el {selected_date}: {normalized_selected:.2f}")
+            st.write(f"Promedio ponderado normalizado el {previous_date}: {normalized_previous:.2f}")
             
             # Calculate percentage variation
             percentage_variation = ((normalized_selected - normalized_previous) / normalized_previous) * 100
-            st.write(f"Percentage variation between {selected_date} and {previous_date}: {percentage_variation:.2f}%")
+            st.write(f"Variación porcentual entre {selected_date} y {previous_date}: {percentage_variation:.2f}%")
             
             # Calculate percentage variation for each component
             variations = []
@@ -85,27 +85,33 @@ if st.button('Enter'):
                     change = ((price_selected - price_previous) / price_previous) * 100
                     variations.append({
                         'Ticker': ticker,
-                        'Weight': weights[ticker],
-                        'Variation': change
+                        'Peso': weights[ticker] * 100,  # Convert weight to percentage
+                        'Variación': change
                     })
             
             # Create a DataFrame for the treemap
             df_variations = pd.DataFrame(variations)
             
+            # Define custom color scale to show greenish only for positive values and red for negatives
+            color_scale = [(0, 'red'), (0.5, 'white'), (1, 'green')]
+
             # Create the treemap with Plotly Express
             fig = px.treemap(
                 df_variations, 
                 path=['Ticker'], 
-                values='Weight', 
-                color='Variation',
-                color_continuous_scale='RdYlGn',
-                title="Component Percentage Variations (Size Based on Weight)",
-                hover_data={'Weight': True, 'Variation': True}
+                values='Peso', 
+                color='Variación',
+                color_continuous_scale=color_scale,
+                title="Variaciones porcentuales de los componentes (Tamaño basado en el peso)",
+                hover_data={
+                    'Peso': ':.2f',   # Format weight as a percentage
+                    'Variación': ':.2f'  # Format variation as a percentage
+                }
             )
             
             # Show the treemap
             st.plotly_chart(fig)
         else:
-            st.write("Unable to calculate percentage variation due to missing data.")
+            st.write("No se puede calcular la variación porcentual debido a la falta de datos.")
     else:
-        st.write(f"Unable to fetch data for the target normalization date: {target_date}")
+        st.write(f"No se pueden obtener datos para la fecha de normalización objetivo: {target_date}")
