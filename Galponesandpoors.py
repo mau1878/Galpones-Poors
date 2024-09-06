@@ -109,6 +109,12 @@ if st.button('Ingresar'):
                 }
             )
             
+            # Update traces to adjust font sizes
+            fig.update_traces(
+                textfont=dict(size=15),  # Increase font size for ticker names
+                hovertemplate="<b>%{label}</b><br>Peso: %{customdata[0]:.2f}%<br>Variación: %{customdata[1]:.2f}%<extra></extra>"  # Format hover text
+            )
+            
             # Show the treemap
             st.plotly_chart(fig)
         else:
