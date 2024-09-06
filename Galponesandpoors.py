@@ -17,6 +17,10 @@ tickers = {
 weights_sum = sum(tickers.values())
 weights = {k: v / weights_sum for k, v in tickers.items()}
 
+# Constants for normalization
+NORMALIZATION_DATE = datetime(2024, 9, 5)
+NORMALIZED_VALUE = 10292.99
+
 # Function to fetch the close price for a given ticker and date (or previous available date)
 def fetch_close_price(ticker, date):
     df = yf.download(ticker, start=date - timedelta(days=5), end=date + timedelta(days=1))['Close']
@@ -35,8 +39,12 @@ def get_weighted_average(date):
             st.write(f"No data available for {ticker} on {date}")
     return total
 
+# Function to normalize a weighted average based on the normalization factor
+def normalize_value(weighted_avg, normalization_factor):
+    return weighted_avg * normalization_factor
+
 # Streamlit app
-st.title("Weighted Average Close Prices")
+st.title("Normalized Weighted Average Close Prices")
 
 # Date selection
 selected_date = st.date_input("Select a date", value=datetime.today())
@@ -50,12 +58,22 @@ if st.button('Enter'):
     weighted_avg_selected = get_weighted_average(selected_date)
     weighted_avg_previous = get_weighted_average(previous_date)
 
-    if weighted_avg_selected and weighted_avg_previous:
-        st.write(f"Weighted average on {selected_date}: {weighted_avg_selected:.2f}")
-        st.write(f"Weighted average on {previous_date}: {weighted_avg_previous:.2f}")
+    # Fetch the weighted average for the normalization date (5 September 2024)
+    weighted_avg_normalization_date = get_weighted_average(NORMALIZATION_DATE)
 
-        # Calculate percentage variation
-        percentage_variation = ((weighted_avg_selected - weighted_avg_previous) / weighted_avg_previous) * 100
+    if weighted_avg_selected and weighted_avg_previous and weighted_avg_normalization_date:
+        # Calculate the normalization factor
+        normalization_factor = NORMALIZED_VALUE / weighted_avg_normalization_date
+
+        # Normalize the values for the selected date and previous date
+        normalized_selected = normalize_value(weighted_avg_selected, normalization_factor)
+        normalized_previous = normalize_value(weighted_avg_previous, normalization_factor)
+
+        st.write(f"Weighted average on {selected_date} (normalized): {normalized_selected:.2f}")
+        st.write(f"Weighted average on {previous_date} (normalized): {normalized_previous:.2f}")
+
+        # Calculate percentage variation using normalized values
+        percentage_variation = ((normalized_selected - normalized_previous) / normalized_previous) * 100
         st.write(f"Percentage variation between {selected_date} and {previous_date}: {percentage_variation:.2f}%")
     else:
         st.write("Unable to calculate percentage variation due to missing data.")
