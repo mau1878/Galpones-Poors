@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
+import plotly.express as px
 
 # Define the tickers and their corresponding weights
 tickers = {
@@ -39,41 +40,49 @@ def get_weighted_average(date):
             st.write(f"No data available for {ticker} on {date}")
     return total
 
+# Function to generate a DataFrame of normalized weighted averages from selected date to present
+def get_normalized_weighted_averages(start_date):
+    current_date = datetime.today()
+    date_range = pd.date_range(start=start_date, end=current_date, freq='B')  # 'B' for business days
+    
+    data = []
+    
+    for date in date_range:
+        weighted_avg = get_weighted_average(date)
+        if weighted_avg is not None:
+            data.append({'Date': date, 'Weighted Average': weighted_avg})
+    
+    df = pd.DataFrame(data)
+    
+    # Fetch weighted average for 5 September 2024 and normalize values
+    weighted_avg_5sep2024 = get_weighted_average(target_date)
+    if weighted_avg_5sep2024:
+        normalization_factor = target_value_5sep2024 / weighted_avg_5sep2024
+        df['Normalized Weighted Average'] = df['Weighted Average'] * normalization_factor
+    else:
+        st.write(f"Unable to fetch data for the target normalization date: {target_date}")
+    
+    return df
+
 # Streamlit app
-st.title("Normalized Weighted Average Close Prices")
+st.title("Normalized Weighted Average Close Prices with Trendline")
 
 # Date selection
 selected_date = st.date_input("Select a date", value=datetime.today())
-previous_date = selected_date - timedelta(days=1)
 
 # Button to fetch data
 if st.button('Enter'):
-    st.write(f"Fetching data for {selected_date} and {previous_date}...")
-
-    # Fetch the weighted average for 5 September 2024
-    weighted_avg_5sep2024 = get_weighted_average(target_date)
+    st.write(f"Fetching data from {selected_date} to present...")
     
-    if weighted_avg_5sep2024:
-        # Calculate normalization factor for 5 September 2024
-        normalization_factor = target_value_5sep2024 / weighted_avg_5sep2024
-        st.write(f"Normalization factor based on 5 September 2024: {normalization_factor:.4f}")
+    # Get normalized weighted averages for the selected date to today
+    df_normalized = get_normalized_weighted_averages(selected_date)
+    
+    if not df_normalized.empty:
+        # Plot the normalized weighted averages over time
+        fig = px.line(df_normalized, x='Date', y='Normalized Weighted Average', 
+                      title='Normalized Weighted Average Over Time',
+                      labels={'Normalized Weighted Average': 'Weighted Average (Normalized)'})
         
-        # Fetch the weighted averages for the selected and previous dates
-        weighted_avg_selected = get_weighted_average(selected_date)
-        weighted_avg_previous = get_weighted_average(previous_date)
-        
-        if weighted_avg_selected and weighted_avg_previous:
-            # Apply normalization factor
-            normalized_selected = weighted_avg_selected * normalization_factor
-            normalized_previous = weighted_avg_previous * normalization_factor
-            
-            st.write(f"Normalized weighted average on {selected_date}: {normalized_selected:.2f}")
-            st.write(f"Normalized weighted average on {previous_date}: {normalized_previous:.2f}")
-            
-            # Calculate percentage variation
-            percentage_variation = ((normalized_selected - normalized_previous) / normalized_previous) * 100
-            st.write(f"Percentage variation between {selected_date} and {previous_date}: {percentage_variation:.2f}%")
-        else:
-            st.write("Unable to calculate percentage variation due to missing data.")
+        st.plotly_chart(fig)
     else:
-        st.write(f"Unable to fetch data for the target normalization date: {target_date}")
+        st.write("Unable to fetch data or no data available for the selected period.")
