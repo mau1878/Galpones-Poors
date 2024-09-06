@@ -30,59 +30,82 @@ def fetch_close_price(ticker, date):
     return df.dropna().iloc[-1]
 
 # Function to get weighted average of close prices for a specific date
-def get_weighted_average(date):
+def get_weighted_average_and_components(date):
     total = 0
+    components = {}
     for ticker, weight in weights.items():
         close_price = fetch_close_price(ticker, date)
         if close_price:
             total += close_price * weight
+            components[ticker] = close_price
         else:
             st.write(f"No data available for {ticker} on {date}")
-    return total
-
-# Function to generate a DataFrame of normalized weighted averages from selected date to present
-def get_normalized_weighted_averages(start_date):
-    current_date = datetime.today()
-    date_range = pd.date_range(start=start_date, end=current_date, freq='B')  # 'B' for business days
-    
-    data = []
-    
-    for date in date_range:
-        weighted_avg = get_weighted_average(date)
-        if weighted_avg is not None:
-            data.append({'Date': date, 'Weighted Average': weighted_avg})
-    
-    df = pd.DataFrame(data)
-    
-    # Fetch weighted average for 5 September 2024 and normalize values
-    weighted_avg_5sep2024 = get_weighted_average(target_date)
-    if weighted_avg_5sep2024:
-        normalization_factor = target_value_5sep2024 / weighted_avg_5sep2024
-        df['Normalized Weighted Average'] = df['Weighted Average'] * normalization_factor
-    else:
-        st.write(f"Unable to fetch data for the target normalization date: {target_date}")
-    
-    return df
+    return total, components
 
 # Streamlit app
-st.title("Normalized Weighted Average Close Prices with Trendline")
+st.title("Normalized Weighted Average Close Prices and Component Variations")
 
 # Date selection
 selected_date = st.date_input("Select a date", value=datetime.today())
+previous_date = selected_date - timedelta(days=1)
 
 # Button to fetch data
 if st.button('Enter'):
-    st.write(f"Fetching data from {selected_date} to present...")
+    st.write(f"Fetching data for {selected_date} and {previous_date}...")
+
+    # Fetch the weighted average for 5 September 2024
+    weighted_avg_5sep2024, _ = get_weighted_average_and_components(target_date)
     
-    # Get normalized weighted averages for the selected date to today
-    df_normalized = get_normalized_weighted_averages(selected_date)
-    
-    if not df_normalized.empty:
-        # Plot the normalized weighted averages over time
-        fig = px.line(df_normalized, x='Date', y='Normalized Weighted Average', 
-                      title='Normalized Weighted Average Over Time',
-                      labels={'Normalized Weighted Average': 'Weighted Average (Normalized)'})
+    if weighted_avg_5sep2024:
+        # Calculate normalization factor for 5 September 2024
+        normalization_factor = target_value_5sep2024 / weighted_avg_5sep2024
+        st.write(f"Normalization factor based on 5 September 2024: {normalization_factor:.4f}")
         
-        st.plotly_chart(fig)
+        # Fetch the weighted averages and components for the selected and previous dates
+        weighted_avg_selected, components_selected = get_weighted_average_and_components(selected_date)
+        weighted_avg_previous, components_previous = get_weighted_average_and_components(previous_date)
+        
+        if weighted_avg_selected and weighted_avg_previous:
+            # Apply normalization factor
+            normalized_selected = weighted_avg_selected * normalization_factor
+            normalized_previous = weighted_avg_previous * normalization_factor
+            
+            st.write(f"Normalized weighted average on {selected_date}: {normalized_selected:.2f}")
+            st.write(f"Normalized weighted average on {previous_date}: {normalized_previous:.2f}")
+            
+            # Calculate percentage variation
+            percentage_variation = ((normalized_selected - normalized_previous) / normalized_previous) * 100
+            st.write(f"Percentage variation between {selected_date} and {previous_date}: {percentage_variation:.2f}%")
+            
+            # Calculate percentage variation for each component
+            variations = []
+            for ticker, price_selected in components_selected.items():
+                price_previous = components_previous.get(ticker)
+                if price_previous:
+                    change = ((price_selected - price_previous) / price_previous) * 100
+                    variations.append({
+                        'Ticker': ticker,
+                        'Weight': weights[ticker],
+                        'Variation': change
+                    })
+            
+            # Create a DataFrame for the treemap
+            df_variations = pd.DataFrame(variations)
+            
+            # Create the treemap with Plotly Express
+            fig = px.treemap(
+                df_variations, 
+                path=['Ticker'], 
+                values='Weight', 
+                color='Variation',
+                color_continuous_scale='RdYlGn',
+                title="Component Percentage Variations (Size Based on Weight)",
+                hover_data={'Weight': True, 'Variation': True}
+            )
+            
+            # Show the treemap
+            st.plotly_chart(fig)
+        else:
+            st.write("Unable to calculate percentage variation due to missing data.")
     else:
-        st.write("Unable to fetch data or no data available for the selected period.")
+        st.write(f"Unable to fetch data for the target normalization date: {target_date}")
