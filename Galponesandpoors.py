@@ -92,9 +92,18 @@ if st.button('Ingresar'):
             # Create a DataFrame for the treemap
             df_variations = pd.DataFrame(variations)
             
-            # Define custom color scale to show greenish only for positive values and red for negatives
-            color_scale = [(0, 'red'), (0.5, 'white'), (1, 'green')]
-
+            # Determine color scale based on value distribution
+            max_variation = df_variations['Variación'].max()
+            min_variation = df_variations['Variación'].min()
+            
+            if max_variation > 0:
+                if min_variation < 0:
+                    color_scale = [(0, 'red'), (0.5, 'white'), (1, 'green')]
+                else:
+                    color_scale = [(0, 'lightgreen'), (1, 'darkgreen')]
+            else:
+                color_scale = [(0, 'darkred'), (1, 'lightcoral')]
+            
             # Create the treemap with Plotly Express
             fig = px.treemap(
                 df_variations, 
