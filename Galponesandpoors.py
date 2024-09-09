@@ -114,7 +114,6 @@ if st.button('Ingresar'):
             color_continuous_scale=color_scale,
             title="Variaciones porcentuales de los componentes (Tamaño basado en el peso)",
             hover_data={
-                'Peso': ':.2f',   # Format weight as a percentage
                 'Variación': ':.2f'  # Format variation as a percentage
             }
         )
