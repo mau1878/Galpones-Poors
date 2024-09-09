@@ -6,17 +6,15 @@ import plotly.express as px
 
 # Define the tickers and their corresponding weights
 tickers = {
-    'BPAT.BA': 12.73, 'MOLA.BA': 7.13, 'CTIO.BA': 5.47, 'MOLI.BA': 6.17, 
-    'CGPA2.BA': 5.07, 'BHIP.BA': 9.74, 'PATA.BA': 3.25, 'LEDE.BA': 5.36, 
-    'INVJ.BA': 2.92, 'METR.BA': 6.92, 'CECO2.BA': 5.95, 'DGCU2.BA': 6.91, 
-    'GBAN.BA': 1.35, 'OEST.BA': 1.32, 'AUSO.BA': 3.38, 'HAVA.BA': 2.64, 
-    'MORI.BA': 2.57, 'CADO.BA': 0.75, 'SAMI.BA': 3.43, 'INTR.BA': 0.38, 
-    'SEMI.BA': 1.72, 'AGRO.BA': 4.82
+    'BPAT.BA': 0.12725233385763700, 'MOLA.BA': 0.07128745984222320, 'CTIO.BA': 0.05470948816674060, 
+    'MOLI.BA': 0.06165477368929270, 'CGPA2.BA': 0.05071483241529670, 'BHIP.BA': 0.09742755901447200, 
+    'PATA.BA': 0.03251201210958140, 'LEDE.BA': 0.05362713511839330, 'INVJ.BA': 0.02923343586598080, 
+    'METR.BA': 0.06924419207715150, 'CECO2.BA': 0.05949122450095040, 'DGCU2.BA': 0.06911527847786080, 
+    'GBAN.BA': 0.01354670235572050, 'OEST.BA': 0.01316236312954340, 'AUSO.BA': 0.03384100739085280, 
+    'HAVA.BA': 0.02640758913660020, 'MORI.BA': 0.02571639166054310, 'CADO.BA': 0.00753227379557035, 
+    'SAMI.BA': 0.03427269544463540, 'INTR.BA': 0.00375850282091302, 'SEMI.BA': 0.01721404747879000, 
+    'AGRO.BA': 0.04822870165125130
 }
-
-# Normalize weights to sum up to 100%
-weights_sum = sum(tickers.values())
-weights = {k: v / weights_sum for k, v in tickers.items()}
 
 # Target normalization for 5 September 2024
 target_value_5sep2024 = 10292.99
@@ -33,7 +31,7 @@ def fetch_close_price(ticker, date):
 def get_weighted_average_and_components(date):
     total = 0
     components = {}
-    for ticker, weight in weights.items():
+    for ticker, weight in tickers.items():
         close_price = fetch_close_price(ticker, date)
         if close_price:
             total += close_price * weight
@@ -85,7 +83,7 @@ if st.button('Ingresar'):
                     change = ((price_selected - price_previous) / price_previous) * 100
                     variations.append({
                         'Ticker': ticker,
-                        'Peso': weights[ticker] * 100,  # Convert weight to percentage
+                        'Peso': tickers[ticker] * 100,  # Convert weight to percentage
                         'Variación': change
                     })
             
