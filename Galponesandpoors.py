@@ -28,21 +28,29 @@ volume_weights = {
 }
 
 # Function to find the closest previous trading day with available data
-def get_previous_trading_day(ticker, date):
-    for i in range(7):  # Try up to 7 days prior to find a valid trading day
-        start_date = date - timedelta(days=i+1)
-        df = yf.download(ticker, start=start_date, end=date, progress=False)
-        if not df.empty:
-            return df['Close'].iloc[-1]  # Return the last available price
-    return None
+def get_closest_trading_day(ticker, date):
+    # Download 7 days of data around the selected date to handle weekends/holidays
+    start_date = date - timedelta(days=7)
+    end_date = date + timedelta(days=1)
+    df = yf.download(ticker, start=start_date, end=end_date, progress=False)
 
-# Function to fetch close price for a given ticker and date (or closest previous date)
-def fetch_close_price(ticker, date):
-    df = yf.download(ticker, start=date - timedelta(days=5), end=date + timedelta(days=1), progress=False)['Close']
     if df.empty:
-        # If no data, get the closest previous trading day
-        return get_previous_trading_day(ticker, date)
-    return df.dropna().iloc[-1]
+        return None, None  # No data available in that range
+
+    # Check for the closest available previous trading day
+    valid_days = df.index[df.index <= pd.Timestamp(date)]
+    if len(valid_days) > 0:
+        closest_date = valid_days[-1]
+        return closest_date, df.loc[closest_date]['Close']
+    else:
+        return None, None
+
+# Function to fetch close price for a given ticker and date
+def fetch_close_price(ticker, date):
+    closest_date, price = get_closest_trading_day(ticker, date)
+    if closest_date:
+        return closest_date, price
+    return None, None
 
 # Function to calculate weighted sums (for both market cap and volume weights)
 def calculate_weighted_sums(date):
@@ -51,13 +59,13 @@ def calculate_weighted_sums(date):
     components = {}
     
     for ticker in market_cap_weights.keys():
-        close_price = fetch_close_price(ticker, date)
+        closest_date, close_price = fetch_close_price(ticker, date)
         if close_price:
             market_cap_sum += close_price * market_cap_weights[ticker]
             volume_sum += close_price * volume_weights[ticker]
             components[ticker] = close_price
         else:
-            st.write(f"No hay datos disponibles para {ticker} en {date}")
+            st.write(f"No hay datos disponibles para {ticker} cerca de {date}")
     
     return market_cap_sum, volume_sum, components
 
@@ -70,7 +78,7 @@ previous_date = selected_date - timedelta(days=1)
 
 # Button to fetch data
 if st.button('Ingresar'):
-    st.write(f"Obteniendo datos para {selected_date} y {previous_date}...")
+    st.write(f"Obteniendo datos para {selected_date} y el día más cercano anterior...")
 
     # Fetch weighted sums for the selected and previous dates
     market_cap_selected, volume_selected, components_selected = calculate_weighted_sums(selected_date)
@@ -82,11 +90,11 @@ if st.button('Ingresar'):
         total_previous = market_cap_previous + volume_previous
         
         st.write(f"Suma total el {selected_date}: {total_selected:.2f}")
-        st.write(f"Suma total el {previous_date}: {total_previous:.2f}")
+        st.write(f"Suma total el día más cercano anterior: {total_previous:.2f}")
         
         # Calculate percentage variation
         percentage_variation = ((total_selected - total_previous) / total_previous) * 100
-        st.write(f"Variación porcentual entre {selected_date} y {previous_date}: {percentage_variation:.2f}%")
+        st.write(f"Variación porcentual entre {selected_date} y el día más cercano anterior: {percentage_variation:.2f}%")
         
         # Calculate percentage variation for each component
         variations = []
