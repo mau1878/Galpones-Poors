@@ -27,12 +27,21 @@ volume_weights = {
     'AGRO.BA': 8.538324421
 }
 
+# Function to find the closest previous trading day with available data
+def get_previous_trading_day(ticker, date):
+    for i in range(7):  # Try up to 7 days prior to find a valid trading day
+        start_date = date - timedelta(days=i+1)
+        df = yf.download(ticker, start=start_date, end=date, progress=False)
+        if not df.empty:
+            return df['Close'].iloc[-1]  # Return the last available price
+    return None
+
 # Function to fetch close price for a given ticker and date (or closest previous date)
 def fetch_close_price(ticker, date):
-    # Download data starting from 5 days earlier to find the closest available price
-    df = yf.download(ticker, start=date - timedelta(days=7), end=date)['Close']
+    df = yf.download(ticker, start=date - timedelta(days=5), end=date + timedelta(days=1), progress=False)['Close']
     if df.empty:
-        return None
+        # If no data, get the closest previous trading day
+        return get_previous_trading_day(ticker, date)
     return df.dropna().iloc[-1]
 
 # Function to calculate weighted sums (for both market cap and volume weights)
