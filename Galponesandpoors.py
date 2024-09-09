@@ -76,25 +76,41 @@ st.title("Galpones & Poor's - Data histórica con pesos de capitalización y vol
 selected_date = st.date_input("Selecciona una fecha", value=datetime.today())
 previous_date = selected_date - timedelta(days=1)
 
+# Find closest valid trading days
+selected_date_closest, _ = fetch_close_price('BPAT.BA', selected_date)  # Use any ticker here
+previous_date_closest, _ = fetch_close_price('BPAT.BA', previous_date)  # Use any ticker here
+
+# If the selected date is not a trading day, use the closest trading day
+if selected_date_closest:
+    final_selected_date = selected_date_closest
+else:
+    final_selected_date = previous_date
+
+# If the previous date is not a trading day, use the closest trading day before it
+if previous_date_closest:
+    final_previous_date = previous_date_closest
+else:
+    final_previous_date = final_selected_date - timedelta(days=1)
+
 # Button to fetch data
 if st.button('Ingresar'):
-    st.write(f"Obteniendo datos para {selected_date} y el día más cercano anterior...")
+    st.write(f"Obteniendo datos para {final_selected_date} y {final_previous_date}...")
 
     # Fetch weighted sums for the selected and previous dates
-    market_cap_selected, volume_selected, components_selected = calculate_weighted_sums(selected_date)
-    market_cap_previous, volume_previous, components_previous = calculate_weighted_sums(previous_date)
+    market_cap_selected, volume_selected, components_selected = calculate_weighted_sums(final_selected_date)
+    market_cap_previous, volume_previous, components_previous = calculate_weighted_sums(final_previous_date)
     
     if market_cap_selected and volume_selected and market_cap_previous and volume_previous:
         # Calculate total sums for selected and previous dates
         total_selected = market_cap_selected + volume_selected
         total_previous = market_cap_previous + volume_previous
         
-        st.write(f"Suma total el {selected_date}: {total_selected:.2f}")
-        st.write(f"Suma total el día más cercano anterior: {total_previous:.2f}")
+        st.write(f"Suma total el {final_selected_date}: {total_selected:.2f}")
+        st.write(f"Suma total el {final_previous_date}: {total_previous:.2f}")
         
         # Calculate percentage variation
         percentage_variation = ((total_selected - total_previous) / total_previous) * 100
-        st.write(f"Variación porcentual entre {selected_date} y el día más cercano anterior: {percentage_variation:.2f}%")
+        st.write(f"Variación porcentual entre {final_selected_date} y {final_previous_date}: {percentage_variation:.2f}%")
         
         # Calculate percentage variation for each component
         variations = []
@@ -146,4 +162,4 @@ if st.button('Ingresar'):
         # Show the treemap
         st.plotly_chart(fig)
     else:
-        st.write("No se puede calcular la variación porcentual debido a la falta de datos.")
+        st.write("No se puede calcular la variación, datos faltantes.")
